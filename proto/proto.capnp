@@ -1,6 +1,6 @@
 @0xe3871e1607c56902;
 
-struct FundraisingCardSummary {
+struct FundraisingSummary {
     link @0 : Text;
     title @1 : Text;
     description @2 : Text;

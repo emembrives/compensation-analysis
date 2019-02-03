@@ -1,6 +1,12 @@
 mod parser;
 mod schema;
 
+extern crate capnp;
+
+pub mod proto_capnp {
+  include!(concat!(env!("OUT_DIR"), "/proto_capnp.rs"));
+}
+
 pub fn get_all_fundraisings() -> Result<parser::IndexPageResult, parser::IndexPageError> {
     let mut i: i32 = 1;
     let mut v: Vec<schema::FundraisingCardSummary> = Vec::new();

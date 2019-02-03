@@ -1,3 +1,5 @@
+use proto_capnp::fundraising_summary;
+
 pub struct FundraisingCardSummary {
     pub link: String,
     pub title: String,
@@ -16,4 +18,6 @@ impl FundraisingCardSummary {
             contributors: contributors,
         }
     }
+
+    pub fn to_proto() -> proto_capnp::FundraisingCardSummary {}
 }
