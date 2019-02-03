@@ -1,0 +1,14 @@
+[package]
+name = "leetchi_compensation"
+version = "0.1.0"
+authors = ["Etienne J. Membrives <etienne@membrives.fr>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+reqwest = "0.9.*"
+scraper = "0.9.1"
+capnp = "0.9.*"
+
+[build-dependencies]
+capnpc = "0.9.*"
