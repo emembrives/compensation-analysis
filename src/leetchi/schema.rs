@@ -1,4 +1,5 @@
-use proto_capnp::fundraising_summary;
+use super::proto_capnp::fundraising_summary;
+use capnp::serialize;
 
 pub struct FundraisingCardSummary {
     pub link: String,
@@ -19,5 +20,19 @@ impl FundraisingCardSummary {
         }
     }
 
-    pub fn to_proto() -> proto_capnp::FundraisingCardSummary {}
+    pub fn to_proto(&self) -> std::io::Result<Vec<u8>> {
+        let mut message = ::capnp::message::Builder::new_default();
+        let mut summary = message.init_root::<fundraising_summary::Builder>();
+        summary.set_link(&self.link);
+        summary.set_title(&self.title);
+        summary.set_description(&self.description);
+        summary.set_verified(self.verified);
+        summary.set_contributors(self.contributors);
+
+        let mut out: Vec<u8> = Vec::new();
+        match serialize::write_message(&mut out, &message) {
+            Err(e) => return Err(e),
+            Ok(_) => return Ok(out),
+        }
+    }
 }

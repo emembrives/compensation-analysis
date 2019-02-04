@@ -3,6 +3,7 @@ extern crate scraper;
 
 use crate::leetchi::schema;
 use scraper::{Html, Selector};
+use reqwest::header;
 
 pub struct IndexPageResult {
     pub fundraisings: Vec<schema::FundraisingCardSummary>,
@@ -89,7 +90,7 @@ fn parse_index_page(text: &str) -> Result<IndexPageResult, IndexPageError> {
 
 pub fn get_one_index_page(url: &str) -> Result<IndexPageResult, IndexPageError> {
     let client = reqwest::Client::new();
-    let request = client.get(url);
+    let request = client.get(url).header(header::USER_AGENT, header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"));
     let mut res = match request.send() {
         Ok(response) => response,
         Err(e) => return Err(IndexPageError::RequestError(e)),
