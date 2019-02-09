@@ -14,7 +14,7 @@ fn main() {
         match summary.to_proto() {
             Err(e) => panic!(e),
             Ok(p) => {
-                db.put(&summary.link.into_bytes(), &p).unwrap();
+                db.put(&("//summary/".to_owned() + &summary.link).into_bytes(), &p).unwrap();
             }
         }
     }

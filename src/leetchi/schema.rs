@@ -36,3 +36,15 @@ impl FundraisingCardSummary {
         }
     }
 }
+
+pub struct FundraisingDetail {
+    pub link: String,
+    pub title: String,
+    pub description: String,
+    pub verified: bool,
+    pub contributors: u32,
+    pub collected: u32,
+    pub objective: u32,
+    pub fundraiser: String,
+    pub tags: Vec<String>
+}
