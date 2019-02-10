@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+message FundraisingSummary {
+    string link = 1;
+    string title = 2;
+    string description = 3;
+    bool verified = 4;
+    uint32 contributors = 5;
+}
+
+message Fundraising {
+    string title = 1;
+    string description = 2;
+    bool verified = 3;
+    uint32 contributors = 4;
+    string collected = 5;
+    string fundraiser = 6;
+
+    message Label {
+        enum LabelType {
+            LOCATION = 0;
+            EVENT_TYPE = 1;
+        }
+
+        LabelType label_type = 1;
+        string name = 2;
+    }
+
+    repeated Label tags = 7;
+}

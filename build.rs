@@ -1,8 +1,14 @@
-extern crate capnpc;
+extern crate protoc_rust;
+
+use protoc_rust::Customize;
 
 fn main() {
-    capnpc::CompilerCommand::new()
-        .src_prefix("proto")
-        .file("proto/proto.capnp")
-        .run().expect("schema compiler command");
+	protoc_rust::run(protoc_rust::Args {
+	    out_dir: "src/protos",
+	    input: &["protos/fundraising.proto"],
+	    includes: &["protos"],
+	    customize: Customize {
+	      ..Default::default()
+	    },
+	}).expect("protoc");
 }
