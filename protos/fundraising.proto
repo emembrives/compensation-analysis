@@ -8,12 +8,14 @@ message FundraisingSummary {
     uint32 contributors = 5;
 }
 
-message Fundraising {
+message FundraisingDetails {
     string title = 1;
     string description = 2;
     bool verified = 3;
     uint32 contributors = 4;
-    string collected = 5;
+    oneof optional_collected {
+        string collected = 5;
+    }
     string fundraiser = 6;
 
     message Label {

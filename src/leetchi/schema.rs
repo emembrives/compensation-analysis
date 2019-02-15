@@ -1,5 +1,6 @@
-use super::fundraising_capnp::fundraising;
-use capnp::serialize;
+use super::super::protos::fundraising;
+
+use protobuf::Message;
 
 #[derive(Debug)]
 pub struct FundraisingCardSummary {
@@ -11,8 +12,14 @@ pub struct FundraisingCardSummary {
 }
 
 impl FundraisingCardSummary {
-    pub fn new(link: &str, title: &str, description: &str, verified: bool, contributors: u32) -> FundraisingCardSummary {
-        FundraisingCardSummary{
+    pub fn new(
+        link: &str,
+        title: &str,
+        description: &str,
+        verified: bool,
+        contributors: u32,
+    ) -> FundraisingCardSummary {
+        FundraisingCardSummary {
             link: link.to_owned(),
             title: title.to_owned(),
             description: description.to_owned(),
@@ -21,17 +28,34 @@ impl FundraisingCardSummary {
         }
     }
 
-    pub fn to_proto(&self) -> std::io::Result<Vec<u8>> {
-        let mut message = ::capnp::message::Builder::new_default();
-        let mut summary = message.init_root::<fundraising::Builder>();
-        summary.set_link(&self.link);
-        summary.set_title(&self.title);
-        summary.set_short_description(&self.description);
+    pub fn from_proto(
+        data: &Vec<u8>,
+    ) -> Result<FundraisingCardSummary, protobuf::error::ProtobufError> {
+        let mut proto_summary = fundraising::FundraisingSummary::new();
+        match proto_summary.merge_from_bytes(&data) {
+            Err(e) => return Err(e),
+            Ok(_) => {}
+        }
+        let summary = FundraisingCardSummary::new(
+            proto_summary.get_link(),
+            proto_summary.get_title(),
+            proto_summary.get_description(),
+            proto_summary.get_verified(),
+            proto_summary.get_contributors(),
+        );
+        return Ok(summary);
+    }
+
+    pub fn to_proto(&self) -> Result<Vec<u8>, protobuf::error::ProtobufError> {
+        let mut summary = fundraising::FundraisingSummary::new();
+        summary.set_link(self.link.clone());
+        summary.set_title(self.title.clone());
+        summary.set_description(self.description.clone());
         summary.set_verified(self.verified);
         summary.set_contributors(self.contributors);
 
         let mut out: Vec<u8> = Vec::new();
-        match serialize::write_message(&mut out, &message) {
+        match summary.write_to_vec(&mut out) {
             Err(e) => return Err(e),
             Ok(_) => return Ok(out),
         }
@@ -58,13 +82,19 @@ pub struct FundraisingDetail {
     pub collected: Option<String>,
     pub contributors: u32,
     pub fundraiser: String,
-    pub tags: Vec<Label>
+    pub tags: Vec<Label>,
 }
 
 impl FundraisingDetail {
-    pub fn new(title: String, description: String, verified: bool,
-                collected: Option<String>, contributors: u32, fundraiser: String) -> FundraisingDetail {
-        FundraisingDetail{
+    pub fn new(
+        title: String,
+        description: String,
+        verified: bool,
+        collected: Option<String>,
+        contributors: u32,
+        fundraiser: String,
+    ) -> FundraisingDetail {
+        FundraisingDetail {
             title: title,
             description: description,
             verified: verified,
@@ -75,31 +105,32 @@ impl FundraisingDetail {
         }
     }
 
-    pub fn to_proto(&self) -> std::io::Result<Vec<u8>> {
-        let mut message = ::capnp::message::Builder::new_default();
-        let mut details = message.init_root::<fundraising_details::Builder>();
-        details.set_title(&self.title);
-        details.set_description(&self.description);
+    pub fn to_proto(&self) -> Result<Vec<u8>, protobuf::error::ProtobufError> {
+        let mut details = fundraising::FundraisingDetails::new();
+        details.set_title(self.title.clone());
+        details.set_description(self.description.clone());
         details.set_verified(self.verified);
-        match self.collected {
-            None => {},
-            Some(t) => details.set_collected(&t)
+        match &self.collected {
+            None => {}
+            Some(t) => details.set_collected(t.clone()),
         }
         details.set_contributors(self.contributors);
-        details.set_fundraiser(&self.fundraiser);
-        details.init_tags(self.tags.len());
-/*        for i in 0..self.tags.len() {
-            let tag = &self.tags.get(i).unwrap();
-            let mut tag_proto = details.get(i);
-            tag_proto.set_name(&tag.name);
-            match tag.label_type {
-                EventType => tag_proto.set_label_type(fundraising_details::LabelType::eventType),
-                Location => tag_proto.set_label_type(fundraising_details::LabelType::location),
+        details.set_fundraiser(self.fundraiser.clone());
+        let mut_tags = details.mut_tags();
+        for tag in &self.tags {
+            let mut proto_tag = fundraising::FundraisingDetails_Label::new();
+            proto_tag.set_name(tag.name.clone());
+            match &tag.label_type {
+                LabelType::EventType => proto_tag
+                    .set_label_type(fundraising::FundraisingDetails_Label_LabelType::EVENT_TYPE),
+                LabelType::Location => proto_tag
+                    .set_label_type(fundraising::FundraisingDetails_Label_LabelType::LOCATION),
             }
-        }*/
+            mut_tags.push(proto_tag);
+        }
 
         let mut out: Vec<u8> = Vec::new();
-        match serialize::write_message(&mut out, &message) {
+        match details.write_to_vec(&mut out) {
             Err(e) => return Err(e),
             Ok(_) => return Ok(out),
         }
