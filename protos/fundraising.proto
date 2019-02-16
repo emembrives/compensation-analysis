@@ -6,6 +6,7 @@ message FundraisingSummary {
     string description = 3;
     bool verified = 4;
     uint32 contributors = 5;
+    string date = 6;
 }
 
 message FundraisingDetails {
@@ -29,4 +30,5 @@ message FundraisingDetails {
     }
 
     repeated Label tags = 7;
+    string date = 8;
 }

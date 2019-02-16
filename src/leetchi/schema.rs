@@ -1,6 +1,13 @@
 use super::super::protos::fundraising;
 
 use protobuf::Message;
+use chrono::prelude::*;
+
+#[derive(Debug)]
+pub enum FromProtoError {
+    ProtobufError(protobuf::error::ProtobufError),
+    ParseError(chrono::format::ParseError)
+}
 
 #[derive(Debug)]
 pub struct FundraisingCardSummary {
@@ -9,6 +16,7 @@ pub struct FundraisingCardSummary {
     pub description: String,
     pub verified: bool,
     pub contributors: u32,
+    pub date: chrono::DateTime<Utc>,
 }
 
 impl FundraisingCardSummary {
@@ -25,24 +33,30 @@ impl FundraisingCardSummary {
             description: description.to_owned(),
             verified: verified,
             contributors: contributors,
+            date: Utc::now(),
         }
     }
 
     pub fn from_proto(
         data: &Vec<u8>,
-    ) -> Result<FundraisingCardSummary, protobuf::error::ProtobufError> {
+    ) -> Result<FundraisingCardSummary, FromProtoError> {
         let mut proto_summary = fundraising::FundraisingSummary::new();
         match proto_summary.merge_from_bytes(&data) {
-            Err(e) => return Err(e),
+            Err(e) => return Err(FromProtoError::ProtobufError(e)),
             Ok(_) => {}
         }
-        let summary = FundraisingCardSummary::new(
-            proto_summary.get_link(),
-            proto_summary.get_title(),
-            proto_summary.get_description(),
-            proto_summary.get_verified(),
-            proto_summary.get_contributors(),
-        );
+        let date_parsed = match DateTime::parse_from_rfc3339(proto_summary.get_date()) {
+            Err(e) => return Err(FromProtoError::ParseError(e)),
+            Ok(d) => d.with_timezone(&Utc),
+        };
+        let summary = FundraisingCardSummary{
+            link: proto_summary.get_link().to_owned(),
+            title: proto_summary.get_title().to_owned(),
+            description: proto_summary.get_description().to_owned(),
+            verified: proto_summary.get_verified(),
+            contributors: proto_summary.get_contributors().to_owned(),
+            date: date_parsed,
+        };
         return Ok(summary);
     }
 
@@ -53,6 +67,7 @@ impl FundraisingCardSummary {
         summary.set_description(self.description.clone());
         summary.set_verified(self.verified);
         summary.set_contributors(self.contributors);
+        summary.set_date(self.date.to_rfc3339());
 
         let mut out: Vec<u8> = Vec::new();
         match summary.write_to_vec(&mut out) {
@@ -83,6 +98,7 @@ pub struct FundraisingDetail {
     pub contributors: u32,
     pub fundraiser: String,
     pub tags: Vec<Label>,
+    pub date: chrono::DateTime<Utc>,
 }
 
 impl FundraisingDetail {
@@ -102,6 +118,7 @@ impl FundraisingDetail {
             collected: collected,
             fundraiser: fundraiser,
             tags: Vec::new(),
+            date: Utc::now(),
         }
     }
 
