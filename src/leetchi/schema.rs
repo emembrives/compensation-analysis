@@ -97,6 +97,7 @@ pub struct FundraisingDetails {
     pub collected: Option<String>,
     pub contributors: Option<u32>,
     pub fundraiser: String,
+    pub delay: Option<u32>,
     pub tags: Vec<Label>,
     pub date: chrono::DateTime<Utc>,
 }
@@ -109,6 +110,7 @@ impl FundraisingDetails {
         collected: Option<String>,
         contributors: Option<u32>,
         fundraiser: String,
+        delay: Option<u32>,
     ) -> FundraisingDetails {
         FundraisingDetails {
             title: title,
@@ -117,6 +119,7 @@ impl FundraisingDetails {
             contributors: contributors,
             collected: collected,
             fundraiser: fundraiser,
+            delay: delay,
             tags: Vec::new(),
             date: Utc::now(),
         }
@@ -136,6 +139,10 @@ impl FundraisingDetails {
             Some(t) => details.set_contributors(*t),
         }
         details.set_fundraiser(self.fundraiser.clone());
+        match &self.delay {
+            None => {}
+            Some(t) => details.set_delay(*t),
+        }
         let mut_tags = details.mut_tags();
         for tag in &self.tags {
             let mut proto_tag = fundraising::FundraisingDetails_Label::new();
@@ -181,6 +188,10 @@ impl FundraisingDetails {
                 false => None,
             },
             fundraiser: proto_detail.get_fundraiser().to_owned(),
+            delay: match proto_detail.has_delay() {
+                true => Some(proto_detail.get_delay()),
+                false => None,
+            },
             tags: proto_detail.get_tags().into_iter().map(|t| Label{
                 name: t.get_name().to_owned(),
                 label_type: match t.get_label_type() {

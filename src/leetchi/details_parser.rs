@@ -56,7 +56,14 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPag
         Err(_) => None,
         Ok(t) => Some(t),
     };
-    let contributors = match select(&fragment, ".c-status__counter") {
+    let contributors = match select(&fragment, ".c-contribution .c-status__counter") {
+        Err(_) => None,
+        Ok(t) => match u32::from_str_radix(t.replace('"', "").trim(), 10) {
+            Err(e) => return Err(DetailPageError::IntParsingError(e)),
+            Ok(n) => Some(n),
+        },
+    };
+    let delay = match select(&fragment, ".c-delay .c-status__counter") {
         Err(_) => None,
         Ok(t) => match u32::from_str_radix(t.replace('"', "").trim(), 10) {
             Err(e) => return Err(DetailPageError::IntParsingError(e)),
@@ -78,6 +85,7 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPag
         collected,
         contributors,
         fundraiser.to_string(),
+        delay,
     );
 
     let label_geoloc_selector =
@@ -156,6 +164,7 @@ mod tests {
                 assert!(details.collected.is_some());
                 assert_eq!(details.contributors, Some(80));
                 assert_eq!(details.fundraiser, "Marianne Grafteaux");
+                assert_eq!(details.delay, Some(361));
                 assert_eq!(details.tags.len(), 4);
             }
         }
@@ -179,6 +188,7 @@ mod tests {
                 assert!(details.collected.is_some());
                 assert_eq!(details.contributors, Some(162));
                 assert_eq!(details.fundraiser, "Maud goasduff");
+                assert_eq!(details.delay, Some(333));
                 assert_eq!(details.tags.len(), 4);
             }
         }
@@ -202,6 +212,7 @@ mod tests {
                 assert!(details.collected.is_none());
                 assert_eq!(details.contributors, Some(276));
                 assert_eq!(details.fundraiser, "Michel SEIGLE-VATTE");
+                assert_eq!(details.delay, Some(170));
                 assert_eq!(details.tags.len(), 1);
             }
         }
@@ -225,6 +236,7 @@ mod tests {
                 assert!(details.collected.is_some());
                 assert_eq!(details.contributors, None);
                 assert_eq!(details.fundraiser, "Patricia Delmas");
+                assert_eq!(details.delay, None);
                 assert_eq!(details.tags.len(), 0);
             }
         }
