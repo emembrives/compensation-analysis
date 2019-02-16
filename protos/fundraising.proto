@@ -13,7 +13,9 @@ message FundraisingDetails {
     string title = 1;
     string description = 2;
     bool verified = 3;
-    uint32 contributors = 4;
+    oneof optional_contributors {
+        uint32 contributors = 4;
+    }
     oneof optional_collected {
         string collected = 5;
     }

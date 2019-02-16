@@ -24,6 +24,6 @@ pub fn get_all_fundraisings() -> Result<index_parser::IndexPageResult, index_par
     Ok(index_parser::IndexPageResult{fundraisings: v})
 }
 
-pub fn get_details(summary: &schema::FundraisingCardSummary) -> Result<schema::FundraisingDetail, details_parser::DetailPageError> {
+pub fn get_details(summary: &schema::FundraisingCardSummary) -> Result<schema::FundraisingDetails, details_parser::DetailPageError> {
     details_parser::get_details_page("https://www.leetchi.com/", summary)
 }

@@ -1,18 +1,17 @@
-extern crate reqwest;
-extern crate scraper;
 extern crate itertools;
 extern crate regex;
+extern crate reqwest;
+extern crate scraper;
 
 use crate::leetchi::schema;
-use scraper::{Html, Selector};
-use reqwest::header;
 use regex::Regex;
-
+use reqwest::header;
+use scraper::{Html, Selector};
 
 #[derive(Debug)]
 pub enum DetailPageError {
     RequestError(reqwest::Error),
-    HtmlParsingError(&'static str),
+    HtmlParsingError(String),
     IntParsingError(std::num::ParseIntError),
 }
 
@@ -22,21 +21,25 @@ fn select<'a>(
 ) -> Result<String, DetailPageError> {
     let selector = Selector::parse(selector_str).unwrap();
     let text = match fragment.select(&selector).last() {
-        None => return Err(DetailPageError::HtmlParsingError("unable to find link node")),
+        None => return Err(DetailPageError::HtmlParsingError(
+            format!("Unable to find node for selector {}", selector_str))),
         Some(node) => node.text().fold(String::new(), |acc, a| acc + " " + a),
     };
     Ok(text.trim().to_owned())
 }
 
-fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetail, DetailPageError> {
+fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPageError> {
     let selector = Selector::parse("body").unwrap();
     let html = Html::parse_document(text);
     let fragment = match html.select(&selector).last() {
         Some(f) => f,
-        None => return Err(DetailPageError::HtmlParsingError("No body in page")),
+        None => return Err(DetailPageError::HtmlParsingError("No body in page".to_owned())),
     };
     let title = match select(&fragment, ".page-heading") {
-        Err(e) => return Err(e),
+        Err(_) => match select(&fragment, ".heading-with-line") {
+            Err(e) => return Err(e),
+            Ok(t) => t,
+        }
         Ok(t) => t,
     };
     let trimmed_title = title.replace("\n", "");
@@ -53,13 +56,12 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetail, DetailPage
         Err(_) => None,
         Ok(t) => Some(t),
     };
-    let contributors_str = match select(&fragment, ".c-status__counter") {
-        Err(e) => return Err(e),
-        Ok(t) => t,
-    };
-    let contributors = match u32::from_str_radix(contributors_str.replace('"', "").trim(), 10) {
-        Err(e) => return Err(DetailPageError::IntParsingError(e)),
-        Ok(n) => n
+    let contributors = match select(&fragment, ".c-status__counter") {
+        Err(_) => None,
+        Ok(t) => match u32::from_str_radix(t.replace('"', "").trim(), 10) {
+            Err(e) => return Err(DetailPageError::IntParsingError(e)),
+            Ok(n) => Some(n),
+        },
     };
     let fundraiser_str = match select(&fragment, ".panel-fundraiser div.panel-body") {
         Err(e) => return Err(e),
@@ -69,23 +71,40 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetail, DetailPage
         static ref RE: Regex = Regex::new(r"\s+").unwrap();
     }
     let fundraiser = RE.replace_all(&fundraiser_str, " ");
-    let mut result = schema::FundraisingDetail::new(trimmed_title, description, verified, collected, contributors, fundraiser.to_string());
+    let mut result = schema::FundraisingDetails::new(
+        trimmed_title,
+        description,
+        verified,
+        collected,
+        contributors,
+        fundraiser.to_string(),
+    );
 
-    let label_geoloc_selector = Selector::parse("#stickySidebar .label-lists a.label-geolocation").unwrap();
+    let label_geoloc_selector =
+        Selector::parse("#stickySidebar .label-lists a.label-geolocation").unwrap();
     let labels_geoloc = fragment.select(&label_geoloc_selector);
     for label_geoloc in labels_geoloc {
-        let text = label_geoloc.text().fold(String::new(), |acc, a| acc + " " + a).trim().to_owned();
-        result.tags.push(schema::Label{
+        let text = label_geoloc
+            .text()
+            .fold(String::new(), |acc, a| acc + " " + a)
+            .trim()
+            .to_owned();
+        result.tags.push(schema::Label {
             name: text,
             label_type: schema::LabelType::Location,
         });
     }
 
-    let label_type_selector = Selector::parse("#stickySidebar .label-lists a.label-event-type").unwrap();
+    let label_type_selector =
+        Selector::parse("#stickySidebar .label-lists a.label-event-type").unwrap();
     let labels_type = fragment.select(&label_type_selector);
     for label_type in labels_type {
-        let text = label_type.text().fold(String::new(), |acc, a| acc + " " + a).trim().to_owned();
-        result.tags.push(schema::Label{
+        let text = label_type
+            .text()
+            .fold(String::new(), |acc, a| acc + " " + a)
+            .trim()
+            .to_owned();
+        result.tags.push(schema::Label {
             name: text,
             label_type: schema::LabelType::EventType,
         });
@@ -93,7 +112,10 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetail, DetailPage
     Ok(result)
 }
 
-pub fn get_details_page(base_url: &str, summary: &schema::FundraisingCardSummary) -> Result<schema::FundraisingDetail, DetailPageError> {
+pub fn get_details_page(
+    base_url: &str,
+    summary: &schema::FundraisingCardSummary,
+) -> Result<schema::FundraisingDetails, DetailPageError> {
     let client = reqwest::Client::new();
     let request = client.get(&(base_url.to_owned() + &summary.link)).
         header(header::USER_AGENT, header::HeaderValue::from_static(
@@ -118,7 +140,8 @@ mod tests {
 
     #[test]
     fn test_parse_regular() {
-        let contents = fs::read_to_string("golden/fundraising_regular.html").expect("Unable to read golden file");
+        let contents = fs::read_to_string("golden/fundraising_regular.html")
+            .expect("Unable to read golden file");
         let result = parse_detail_page(&contents);
         match result {
             Err(e) => {
@@ -131,7 +154,7 @@ mod tests {
                 assert_ne!(details.description.len(), 0);
                 assert!(!details.verified);
                 assert!(details.collected.is_some());
-                assert_eq!(details.contributors, 80);
+                assert_eq!(details.contributors, Some(80));
                 assert_eq!(details.fundraiser, "Marianne Grafteaux");
                 assert_eq!(details.tags.len(), 4);
             }
@@ -140,7 +163,8 @@ mod tests {
 
     #[test]
     fn test_parse_verified() {
-        let contents = fs::read_to_string("golden/fundraising_verified.html").expect("Unable to read golden file");
+        let contents = fs::read_to_string("golden/fundraising_verified.html")
+            .expect("Unable to read golden file");
         let result = parse_detail_page(&contents);
         match result {
             Err(e) => {
@@ -153,7 +177,7 @@ mod tests {
                 assert_ne!(details.description.len(), 0);
                 assert!(details.verified);
                 assert!(details.collected.is_some());
-                assert_eq!(details.contributors, 162);
+                assert_eq!(details.contributors, Some(162));
                 assert_eq!(details.fundraiser, "Maud goasduff");
                 assert_eq!(details.tags.len(), 4);
             }
@@ -162,7 +186,8 @@ mod tests {
 
     #[test]
     fn test_parse_no_amount() {
-        let contents = fs::read_to_string("golden/fundraising_no_amount.html").expect("Unable to read golden file");
+        let contents = fs::read_to_string("golden/fundraising_no_amount.html")
+            .expect("Unable to read golden file");
         let result = parse_detail_page(&contents);
         match result {
             Err(e) => {
@@ -175,9 +200,32 @@ mod tests {
                 assert_ne!(details.description.len(), 0);
                 assert!(!details.verified);
                 assert!(details.collected.is_none());
-                assert_eq!(details.contributors, 276);
+                assert_eq!(details.contributors, Some(276));
                 assert_eq!(details.fundraiser, "Michel SEIGLE-VATTE");
                 assert_eq!(details.tags.len(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_no_contributors() {
+        let contents = fs::read_to_string("golden/fundraising_no_contributors.html")
+            .expect("Unable to read golden file");
+        let result = parse_detail_page(&contents);
+        match result {
+            Err(e) => {
+                println!("{:#?}", e);
+                assert!(false);
+            }
+            Ok(details) => {
+                println!("{:#?}", &details);
+                assert_eq!(details.title, "Solidarité");
+                assert_ne!(details.description.len(), 0);
+                assert!(!details.verified);
+                assert!(details.collected.is_some());
+                assert_eq!(details.contributors, None);
+                assert_eq!(details.fundraiser, "Patricia Delmas");
+                assert_eq!(details.tags.len(), 0);
             }
         }
     }

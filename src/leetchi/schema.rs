@@ -90,27 +90,27 @@ pub struct Label {
 }
 
 #[derive(Debug)]
-pub struct FundraisingDetail {
+pub struct FundraisingDetails {
     pub title: String,
     pub description: String,
     pub verified: bool,
     pub collected: Option<String>,
-    pub contributors: u32,
+    pub contributors: Option<u32>,
     pub fundraiser: String,
     pub tags: Vec<Label>,
     pub date: chrono::DateTime<Utc>,
 }
 
-impl FundraisingDetail {
+impl FundraisingDetails {
     pub fn new(
         title: String,
         description: String,
         verified: bool,
         collected: Option<String>,
-        contributors: u32,
+        contributors: Option<u32>,
         fundraiser: String,
-    ) -> FundraisingDetail {
-        FundraisingDetail {
+    ) -> FundraisingDetails {
+        FundraisingDetails {
             title: title,
             description: description,
             verified: verified,
@@ -131,7 +131,10 @@ impl FundraisingDetail {
             None => {}
             Some(t) => details.set_collected(t.clone()),
         }
-        details.set_contributors(self.contributors);
+        match &self.contributors {
+            None => {}
+            Some(t) => details.set_contributors(*t),
+        }
         details.set_fundraiser(self.fundraiser.clone());
         let mut_tags = details.mut_tags();
         for tag in &self.tags {
@@ -151,5 +154,42 @@ impl FundraisingDetail {
             Err(e) => return Err(e),
             Ok(_) => return Ok(out),
         }
+    }
+
+    pub fn from_proto(
+        data: &Vec<u8>,
+    ) -> Result<FundraisingDetails, FromProtoError> {
+        let mut proto_detail = fundraising::FundraisingDetails::new();
+        match proto_detail.merge_from_bytes(&data) {
+            Err(e) => return Err(FromProtoError::ProtobufError(e)),
+            Ok(_) => {}
+        }
+        let date_parsed = match DateTime::parse_from_rfc3339(proto_detail.get_date()) {
+            Err(e) => return Err(FromProtoError::ParseError(e)),
+            Ok(d) => d.with_timezone(&Utc),
+        };
+        let detail = FundraisingDetails{
+            title: proto_detail.get_title().to_owned(),
+            description: proto_detail.get_description().to_owned(),
+            verified: proto_detail.get_verified(),
+            contributors: match proto_detail.has_contributors() {
+                true => Some(proto_detail.get_contributors()),
+                false => None,
+            },
+            collected: match proto_detail.has_collected() {
+                true => Some(proto_detail.get_collected().to_owned()),
+                false => None,
+            },
+            fundraiser: proto_detail.get_fundraiser().to_owned(),
+            tags: proto_detail.get_tags().into_iter().map(|t| Label{
+                name: t.get_name().to_owned(),
+                label_type: match t.get_label_type() {
+                    fundraising::FundraisingDetails_Label_LabelType::EVENT_TYPE => LabelType::EventType,
+                    fundraising::FundraisingDetails_Label_LabelType::LOCATION => LabelType::Location,
+                }
+            }).collect(),
+            date: date_parsed,
+        };
+        return Ok(detail);
     }
 }
