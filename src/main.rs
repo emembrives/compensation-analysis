@@ -50,7 +50,12 @@ fn details(database_path: &str) {
             thread::sleep(time::Duration::from_secs(1) - (now - prev));
         }
         prev = now;
-        let details = leetchi::get_details(&summary).unwrap();
+        let details = match leetchi::get_details(&summary) {
+            Ok(d) => d,
+            Err(leetchi::DetailPageError::NonePage) => continue,
+            Err(e) => panic!(e),
+        };
+
         let details_proto = details.to_proto().unwrap();
         db.put(
             &("//details/".to_owned() + &summary.link).into_bytes(),

@@ -155,6 +155,7 @@ impl FundraisingDetails {
             }
             mut_tags.push(proto_tag);
         }
+        details.set_date(self.date.to_rfc3339());
 
         let mut out: Vec<u8> = Vec::new();
         match details.write_to_vec(&mut out) {

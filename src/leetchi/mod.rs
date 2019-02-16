@@ -24,6 +24,15 @@ pub fn get_all_fundraisings() -> Result<index_parser::IndexPageResult, index_par
     Ok(index_parser::IndexPageResult{fundraisings: v})
 }
 
-pub fn get_details(summary: &schema::FundraisingCardSummary) -> Result<schema::FundraisingDetails, details_parser::DetailPageError> {
+#[derive(Debug)]
+pub enum DetailPageError {
+    RequestError(reqwest::Error),
+    HtmlParsingError(String),
+    IntParsingError(std::num::ParseIntError),
+    // The page does not exist.
+    NonePage,
+}
+
+pub fn get_details(summary: &schema::FundraisingCardSummary) -> Result<schema::FundraisingDetails, DetailPageError> {
     details_parser::get_details_page("https://www.leetchi.com/", summary)
 }

@@ -7,13 +7,7 @@ use crate::leetchi::schema;
 use regex::Regex;
 use reqwest::header;
 use scraper::{Html, Selector};
-
-#[derive(Debug)]
-pub enum DetailPageError {
-    RequestError(reqwest::Error),
-    HtmlParsingError(String),
-    IntParsingError(std::num::ParseIntError),
-}
+use super::DetailPageError;
 
 fn select<'a>(
     fragment: &'a scraper::ElementRef,
@@ -21,8 +15,12 @@ fn select<'a>(
 ) -> Result<String, DetailPageError> {
     let selector = Selector::parse(selector_str).unwrap();
     let text = match fragment.select(&selector).last() {
-        None => return Err(DetailPageError::HtmlParsingError(
-            format!("Unable to find node for selector {}", selector_str))),
+        None => {
+            return Err(DetailPageError::HtmlParsingError(format!(
+                "Unable to find node for selector {}",
+                selector_str
+            )));
+        }
         Some(node) => node.text().fold(String::new(), |acc, a| acc + " " + a),
     };
     Ok(text.trim().to_owned())
@@ -33,13 +31,17 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPag
     let html = Html::parse_document(text);
     let fragment = match html.select(&selector).last() {
         Some(f) => f,
-        None => return Err(DetailPageError::HtmlParsingError("No body in page".to_owned())),
+        None => {
+            return Err(DetailPageError::HtmlParsingError(
+                "No body in page".to_owned(),
+            ));
+        }
     };
     let title = match select(&fragment, ".page-heading") {
         Err(_) => match select(&fragment, ".heading-with-line") {
             Err(e) => return Err(e),
             Ok(t) => t,
-        }
+        },
         Ok(t) => t,
     };
     let trimmed_title = title.replace("\n", "");
@@ -124,15 +126,27 @@ pub fn get_details_page(
     base_url: &str,
     summary: &schema::FundraisingCardSummary,
 ) -> Result<schema::FundraisingDetails, DetailPageError> {
-    let client = reqwest::Client::new();
-    let request = client.get(&(base_url.to_owned() + &summary.link)).
-        header(header::USER_AGENT, header::HeaderValue::from_static(
+    let mut headers = header::HeaderMap::new();
+    headers.insert(header::USER_AGENT, header::HeaderValue::from_static(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"));
+
+    let client = match reqwest::Client::builder()
+        .redirect(reqwest::RedirectPolicy::none())
+        .default_headers(headers)
+        .gzip(true)
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => panic!(e),
+    };
+    let request = client.get(&(base_url.to_owned() + &summary.link));
     let mut res = match request.send() {
         Ok(response) => response,
         Err(e) => return Err(DetailPageError::RequestError(e)),
     };
-
+    if res.status().is_redirection() {
+        return Err(DetailPageError::NonePage);
+    }
     let text = match res.text() {
         Err(e) => return Err(DetailPageError::RequestError(e)),
         Ok(text) => text,
