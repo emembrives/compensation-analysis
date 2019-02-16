@@ -37,10 +37,11 @@ fn details(database_path: &str) {
         let downloaded_details = db.get(&("//summary/".to_owned() + &summary.link).into_bytes()).unwrap();
         if downloaded_details.is_some() {
             println!("Details known for {}", &summary.link);
-            if leetchi::schema::FundraisingDetails::from_proto(&downloaded_details.unwrap().to_vec()).is_ok() {
-                continue;
+            let parsed_details = leetchi::schema::FundraisingDetails::from_proto(&downloaded_details.unwrap().to_vec());
+            match parsed_details {
+                Ok(_) => continue,
+                Err(e) => println!("Unable to parse {} due to {:?}, downloading again", &summary.link, e),
             }
-            println!("Unable to parse {}, downloading again", &summary.link);
         }
 
         println!("Downloading details for {}", &summary.link);
