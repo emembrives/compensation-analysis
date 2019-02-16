@@ -34,7 +34,7 @@ fn details(database_path: &str) {
     let mut prev = time::Instant::now();
     for (_, value) in iterator {
         let summary = leetchi::schema::FundraisingCardSummary::from_proto(&value.to_vec()).unwrap();
-        let downloaded_details = db.get(&("//summary/".to_owned() + &summary.link).into_bytes()).unwrap();
+        let downloaded_details = db.get(&("//details/".to_owned() + &summary.link).into_bytes()).unwrap();
         if downloaded_details.is_some() {
             println!("Details known for {}", &summary.link);
             let parsed_details = leetchi::schema::FundraisingDetails::from_proto(&downloaded_details.unwrap().to_vec());
