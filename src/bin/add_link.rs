@@ -10,7 +10,13 @@ fn main() {
     let db = DB::open_default(database_path).unwrap();
     let iterator = db.prefix_iterator(b"//details/");
     for (key, value) in iterator {
-        let mut parsed_details = leetchi::schema::FundraisingDetails::from_proto(&value.to_vec()).unwrap();
+        let mut parsed_details = match leetchi::schema::FundraisingDetails::from_proto(&value.to_vec()) {
+            Ok(d) => d,
+            Err(e) => {
+                let key_str = String::from_utf8(key.to_vec()).unwrap();
+                panic!("Error while reading proto for {:?}: {:?}", &key_str, e);
+            }
+        };
         if parsed_details.link.len() != 0 {
             continue;
         }
