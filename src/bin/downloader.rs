@@ -1,9 +1,6 @@
-#[macro_use]
-extern crate lazy_static;
-extern crate clap;
+extern crate leetchi_compensation;
 
-mod leetchi;
-mod protos;
+use leetchi_compensation::leetchi;
 
 use clap::{App, Arg};
 use rocksdb::DB;

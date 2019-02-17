@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Etienne J. Membrives <etienne@membrives.fr>"]
 edition = "2018"
 build = "build.rs"
+publish = false
 
 [dependencies]
 reqwest = "0.9.*"
@@ -16,6 +17,7 @@ regex = "1.*"
 lazy_static = "1.2.*"
 chrono = "0.4"
 clap = "2.32.0"
+rocket = "0.4"
 
 [build-dependencies]
 protoc-rust = "2.*"

@@ -78,19 +78,23 @@ impl FundraisingCardSummary {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum LabelType {
     EventType,
     Location,
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct Label {
     pub label_type: LabelType,
     pub name: String,
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub struct FundraisingDetails {
+    pub link: String,
     pub title: String,
     pub description: String,
     pub verified: bool,
@@ -104,6 +108,7 @@ pub struct FundraisingDetails {
 
 impl FundraisingDetails {
     pub fn new(
+        link: String,
         title: String,
         description: String,
         verified: bool,
@@ -113,6 +118,7 @@ impl FundraisingDetails {
         delay: Option<u32>,
     ) -> FundraisingDetails {
         FundraisingDetails {
+            link: link,
             title: title,
             description: description,
             verified: verified,
@@ -127,6 +133,7 @@ impl FundraisingDetails {
 
     pub fn to_proto(&self) -> Result<Vec<u8>, protobuf::error::ProtobufError> {
         let mut details = fundraising::FundraisingDetails::new();
+        details.set_link(self.link.clone());
         details.set_title(self.title.clone());
         details.set_description(self.description.clone());
         details.set_verified(self.verified);
@@ -177,6 +184,7 @@ impl FundraisingDetails {
             Ok(d) => d.with_timezone(&Utc),
         };
         let detail = FundraisingDetails{
+            link: proto_detail.get_link().to_owned(),
             title: proto_detail.get_title().to_owned(),
             description: proto_detail.get_description().to_owned(),
             verified: proto_detail.get_verified(),
@@ -203,5 +211,22 @@ impl FundraisingDetails {
             date: date_parsed,
         };
         return Ok(detail);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::super::details_parser;
+    use std::fs;
+
+    #[test]
+    fn test_round_trip_details() {
+        let contents = fs::read_to_string("golden/fundraising_verified.html")
+            .expect("Unable to read golden file");
+        let result = details_parser::parse_detail_page("somelink.html", &contents).unwrap();
+        let proto = result.to_proto().unwrap();
+        let parsed = FundraisingDetails::from_proto(&proto).unwrap();
+        assert_eq!(result, parsed);
     }
 }

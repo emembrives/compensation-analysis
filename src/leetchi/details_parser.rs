@@ -26,7 +26,7 @@ fn select<'a>(
     Ok(text.trim().to_owned())
 }
 
-fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPageError> {
+pub fn parse_detail_page(link: &str, text: &str) -> Result<schema::FundraisingDetails, DetailPageError> {
     let selector = Selector::parse("body").unwrap();
     let html = Html::parse_document(text);
     let fragment = match html.select(&selector).last() {
@@ -81,6 +81,7 @@ fn parse_detail_page(text: &str) -> Result<schema::FundraisingDetails, DetailPag
     }
     let fundraiser = RE.replace_all(&fundraiser_str, " ");
     let mut result = schema::FundraisingDetails::new(
+        link.to_owned(),
         trimmed_title,
         description,
         verified,
@@ -151,7 +152,7 @@ pub fn get_details_page(
         Err(e) => return Err(DetailPageError::RequestError(e)),
         Ok(text) => text,
     };
-    parse_detail_page(&text)
+    parse_detail_page(&summary.link, &text)
 }
 
 #[cfg(test)]
@@ -164,7 +165,7 @@ mod tests {
     fn test_parse_regular() {
         let contents = fs::read_to_string("golden/fundraising_regular.html")
             .expect("Unable to read golden file");
-        let result = parse_detail_page(&contents);
+        let result = parse_detail_page("somelink.html", &contents);
         match result {
             Err(e) => {
                 println!("{:#?}", e);
@@ -188,7 +189,7 @@ mod tests {
     fn test_parse_verified() {
         let contents = fs::read_to_string("golden/fundraising_verified.html")
             .expect("Unable to read golden file");
-        let result = parse_detail_page(&contents);
+        let result = parse_detail_page("somelink.html", &contents);
         match result {
             Err(e) => {
                 println!("{:#?}", e);
@@ -196,6 +197,7 @@ mod tests {
             }
             Ok(details) => {
                 println!("{:#?}", &details);
+                assert_eq!(details.link, "somelink.html");
                 assert_eq!(details.title, "Les pas d'une princesse");
                 assert_ne!(details.description.len(), 0);
                 assert!(details.verified);
@@ -212,7 +214,7 @@ mod tests {
     fn test_parse_no_amount() {
         let contents = fs::read_to_string("golden/fundraising_no_amount.html")
             .expect("Unable to read golden file");
-        let result = parse_detail_page(&contents);
+        let result = parse_detail_page("somelink.html", &contents);
         match result {
             Err(e) => {
                 println!("{:#?}", e);
@@ -236,7 +238,7 @@ mod tests {
     fn test_parse_no_contributors() {
         let contents = fs::read_to_string("golden/fundraising_no_contributors.html")
             .expect("Unable to read golden file");
-        let result = parse_detail_page(&contents);
+        let result = parse_detail_page("somelink.html", &contents);
         match result {
             Err(e) => {
                 println!("{:#?}", e);

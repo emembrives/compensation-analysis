@@ -10,6 +10,7 @@ message FundraisingSummary {
 }
 
 message FundraisingDetails {
+    string link = 10;
     string title = 1;
     string description = 2;
     bool verified = 3;
@@ -37,4 +38,17 @@ message FundraisingDetails {
 
     repeated Label tags = 8;
     string date = 9;
+}
+
+
+message FundraisingEval {
+    string link = 1;
+
+    message Eval {
+        repeated string tags = 1;
+        string date = 2;
+        string source = 3;
+    }
+
+    repeated Eval eval = 2; 
 }
