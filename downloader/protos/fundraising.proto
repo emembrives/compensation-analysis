@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+message FundraisingSummary {
+    string link = 1;
+    string title = 2;
+    string description = 3;
+    bool verified = 4;
+    uint32 contributors = 5;
+    string date = 6;
+}
+
+message FundraisingDetails {
+    string link = 10;
+    string title = 1;
+    string description = 2;
+    bool verified = 3;
+    oneof optional_contributors {
+        uint32 contributors = 4;
+    }
+    oneof optional_collected {
+        string collected = 5;
+    }
+    string fundraiser = 6;
+
+    message Label {
+        enum LabelType {
+            LOCATION = 0;
+            EVENT_TYPE = 1;
+        }
+
+        LabelType label_type = 1;
+        string name = 2;
+    }
+
+    oneof optional_delay {
+        uint32 delay = 7;
+    }
+
+    repeated Label tags = 8;
+    string date = 9;
+}
+
+
+message FundraisingEval {
+    string link = 1;
+
+    message Eval {
+        repeated string tags = 1;
+        string date = 2;
+        string source = 3;
+    }
+
+    repeated Eval eval = 2; 
+}

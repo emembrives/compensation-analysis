@@ -1,0 +1,15 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Etienne J. Membrives <etienne@membrives.fr>"]
+edition = "2018"
+build = "build.rs"
+publish = false
+
+[dependencies]
+bytes = "0.4"
+protobuf = { version = "~2.0", features = ["with-bytes"] }
+chrono = "0.4"
+
+[build-dependencies]
+protoc-rust = "2.*"

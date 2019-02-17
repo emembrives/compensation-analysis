@@ -3,7 +3,7 @@ extern crate regex;
 extern crate reqwest;
 extern crate scraper;
 
-use crate::leetchi::schema;
+use common::schema;
 use regex::Regex;
 use reqwest::header;
 use scraper::{Html, Selector};

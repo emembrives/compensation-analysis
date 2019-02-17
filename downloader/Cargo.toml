@@ -1,23 +1,17 @@
 [package]
-name = "leetchi_compensation"
+name = "downloader"
 version = "0.1.0"
 authors = ["Etienne J. Membrives <etienne@membrives.fr>"]
 edition = "2018"
-build = "build.rs"
 publish = false
 
 [dependencies]
+common = { path = "../common" }
 reqwest = "0.9.*"
 scraper = "0.9.1"
-bytes = "0.4"
-protobuf = { version = "~2.0", features = ["with-bytes"] }
 rocksdb = "0.11.*"
 itertools = "0.8.*"
 regex = "1.*"
 lazy_static = "1.2.*"
 chrono = "0.4"
 clap = "2.32.0"
-rocket = "0.4"
-
-[build-dependencies]
-protoc-rust = "2.*"

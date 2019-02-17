@@ -1,7 +1,7 @@
 extern crate reqwest;
 extern crate scraper;
 
-use crate::leetchi::schema;
+use common::schema;
 use scraper::{Html, Selector};
 use reqwest::header;
 

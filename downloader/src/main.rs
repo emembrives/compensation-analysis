@@ -1,7 +1,9 @@
-extern crate leetchi_compensation;
+#[macro_use]
+extern crate lazy_static;
 
-use leetchi_compensation::leetchi;
+mod leetchi;
 
+use common::schema;
 use clap::{App, Arg};
 use rocksdb::DB;
 use std::{thread, time};
@@ -30,11 +32,11 @@ fn details(database_path: &str) {
     let iterator = db.prefix_iterator(b"//summary/");
     let mut prev = time::Instant::now();
     for (_, value) in iterator {
-        let summary = leetchi::schema::FundraisingCardSummary::from_proto(&value.to_vec()).unwrap();
+        let summary = schema::FundraisingCardSummary::from_proto(&value.to_vec()).unwrap();
         let downloaded_details = db.get(&("//details/".to_owned() + &summary.link).into_bytes()).unwrap();
         if downloaded_details.is_some() {
             println!("Details known for {}", &summary.link);
-            let parsed_details = leetchi::schema::FundraisingDetails::from_proto(&downloaded_details.unwrap().to_vec());
+            let parsed_details = schema::FundraisingDetails::from_proto(&downloaded_details.unwrap().to_vec());
             match parsed_details {
                 Ok(_) => continue,
                 Err(e) => println!("Unable to parse {} due to {:?}, downloading again", &summary.link, e),

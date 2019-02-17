@@ -1,6 +1,7 @@
 mod index_parser;
 mod details_parser;
-pub mod schema;
+
+use common::schema;
 
 pub fn get_all_fundraisings() -> Result<index_parser::IndexPageResult, index_parser::IndexPageError> {
     let mut i: i32 = 1;

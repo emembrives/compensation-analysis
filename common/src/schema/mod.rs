@@ -1,4 +1,4 @@
-use super::super::protos::fundraising;
+use super::protos::fundraising;
 
 use protobuf::Message;
 use chrono::prelude::*;
@@ -211,22 +211,5 @@ impl FundraisingDetails {
             date: date_parsed,
         };
         return Ok(detail);
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use super::super::details_parser;
-    use std::fs;
-
-    #[test]
-    fn test_round_trip_details() {
-        let contents = fs::read_to_string("golden/fundraising_verified.html")
-            .expect("Unable to read golden file");
-        let result = details_parser::parse_detail_page("somelink.html", &contents).unwrap();
-        let proto = result.to_proto().unwrap();
-        let parsed = FundraisingDetails::from_proto(&proto).unwrap();
-        assert_eq!(result, parsed);
     }
 }
