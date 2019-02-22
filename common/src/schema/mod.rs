@@ -2,6 +2,7 @@ use super::protos::fundraising;
 
 use protobuf::Message;
 use chrono::prelude::*;
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug)]
 pub enum FromProtoError {
@@ -9,7 +10,7 @@ pub enum FromProtoError {
     ParseError(chrono::format::ParseError)
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FundraisingCardSummary {
     pub link: String,
     pub title: String,
@@ -77,21 +78,21 @@ impl FundraisingCardSummary {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[derive(PartialEq)]
 pub enum LabelType {
     EventType,
     Location,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[derive(PartialEq)]
 pub struct Label {
     pub label_type: LabelType,
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[derive(PartialEq)]
 pub struct FundraisingDetails {
     pub link: String,
