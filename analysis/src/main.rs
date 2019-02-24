@@ -1,14 +1,15 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
-use rocksdb::DB;
 use clap::{App, Arg};
-use common::schema::FundraisingDetails;
-use rocket::response::status::Custom;
+use common::schema::{FundraisingDetails, FundraisingEvals, FromProtoError};
 use rocket::http::Status;
-use std::fmt;
+use rocket::response::status::Custom;
 use rocket_contrib::json::Json;
+use rocksdb::DB;
+use serde::{Deserialize, Serialize};
 
 struct FundraisingDb {
     db: DB,
@@ -16,15 +17,32 @@ struct FundraisingDb {
 
 impl FundraisingDb {
     pub fn new(database_path: &str) -> FundraisingDb {
-        FundraisingDb{
-            db: DB::open_default(database_path).unwrap()
+        FundraisingDb {
+            db: DB::open_default(database_path).unwrap(),
         }
     }
 
-    pub fn get_unevaled_fundraising(&self) -> Result<Option<FundraisingDetails>, common::schema::FromProtoError> {
-        let mut details_iterator : rocksdb::DBRawIterator = self.db.prefix_iterator(b"//details/").into();
+    pub fn save_eval(&self, eval: WebEval) -> Result<(), FromProtoError> {
+        let mut eval_key = b"//details/".to_vec();
+        eval_key.append(&mut eval.link.clone().into_bytes());
+        let mut eval_data = match self.db.get(&eval_key) {
+            Ok(Some(base)) => match FundraisingEvals::from_proto(&base.to_vec()) {
+                Ok(r) => r,
+                Err(e) => return Err(e),
+            },
+            Ok(None) | Err(_) => FundraisingEvals::new(eval.link.clone()),
+        };
+        eval_data.new_eval(eval.tags, "web".to_owned());
+        Ok(())
+    }
+
+    pub fn get_unevaled_fundraising(
+        &self,
+    ) -> Result<Option<FundraisingDetails>, common::schema::FromProtoError> {
+        let mut details_iterator: rocksdb::DBRawIterator =
+            self.db.prefix_iterator(b"//details/").into();
         details_iterator.seek_to_first();
-        let mut eval_iterator : rocksdb::DBRawIterator = self.db.prefix_iterator(b"//eval/").into();
+        let mut eval_iterator: rocksdb::DBRawIterator = self.db.prefix_iterator(b"//eval/").into();
         eval_iterator.seek_to_last();
         if eval_iterator.valid() {
             let mut last_eval_link = eval_iterator.key().unwrap()[7..].to_vec();
@@ -37,7 +55,9 @@ impl FundraisingDb {
             // We have evaluated everything.
             return Ok(None);
         }
-        match common::schema::FundraisingDetails::from_proto(&details_iterator.value().unwrap().to_vec()) {
+        match common::schema::FundraisingDetails::from_proto(
+            &details_iterator.value().unwrap().to_vec(),
+        ) {
             Ok(p) => return Ok(Some(p)),
             Err(e) => return Err(e),
         }
@@ -45,7 +65,9 @@ impl FundraisingDb {
 }
 
 #[get("/next")]
-fn next(db: rocket::State<FundraisingDb>) -> Result<Option<Json<FundraisingDetails>>, Custom<String>> {
+fn next(
+    db: rocket::State<FundraisingDb>,
+) -> Result<Option<Json<FundraisingDetails>>, Custom<String>> {
     match db.get_unevaled_fundraising() {
         Ok(r) => match r {
             Some(details) => Ok(Some(Json(details))),
@@ -55,9 +77,15 @@ fn next(db: rocket::State<FundraisingDb>) -> Result<Option<Json<FundraisingDetai
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct WebEval {
+    link: String,
+    tags: Vec<String>,
+}
+
 #[post("/save", data = "<eval>")]
-fn save(db: rocket::State<FundraisingDb>, eval: Json<String>) -> &'static str {
-    "Hello, world!"
+fn save(db: rocket::State<FundraisingDb>, eval: Json<WebEval>) -> Result<(), FromProtoError> {
+    return db.save_eval(eval.into_inner());
 }
 
 fn main() {
