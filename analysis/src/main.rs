@@ -4,7 +4,7 @@
 extern crate rocket;
 
 use clap::{App, Arg};
-use common::schema::{FundraisingDetails, FundraisingEvals, FromProtoError};
+use common::schema::{FromProtoError, FundraisingDetails, FundraisingEvals};
 use rocket::http::Status;
 use rocket::response::status::Custom;
 use rocket_contrib::json::Json;
@@ -62,6 +62,23 @@ impl FundraisingDb {
             Err(e) => return Err(e),
         }
     }
+
+    pub fn get_tags(&self) -> Result<Vec<String>, common::schema::FromProtoError> {
+        let eval_iterator: rocksdb::DBIterator = self.db.prefix_iterator(b"//eval/");
+        let mut tags: Vec<String> = Vec::new();
+        for evals in eval_iterator {
+            let (_, val) = evals; 
+            match common::schema::FundraisingEvals::from_proto(&val.to_vec()) {
+                Ok(p) => {
+                    for eval in p.evals {
+                        tags.extend(eval.tags);
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(tags)
+    }
 }
 
 #[get("/next")]
@@ -88,6 +105,14 @@ fn save(db: rocket::State<FundraisingDb>, eval: Json<WebEval>) -> Result<(), Fro
     return db.save_eval(eval.into_inner());
 }
 
+#[get("/tags")]
+fn tags(db: rocket::State<FundraisingDb>) -> Result<Json<Vec<String>>, FromProtoError> {
+    match db.get_tags() {
+        Ok(tags) => Ok(Json(tags)),
+        Err(e) => Err(e),
+    }
+}
+
 fn main() {
     let matches = App::new("Leetchi analyzer")
         .version("0.1")
@@ -107,6 +132,6 @@ fn main() {
 
     rocket::ignite()
         .manage(FundraisingDb::new(database_path))
-        .mount("/", routes![next, save])
+        .mount("/", routes![next, save, tags])
         .launch();
 }

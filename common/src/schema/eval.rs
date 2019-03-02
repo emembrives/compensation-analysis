@@ -7,15 +7,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Eval {
-    tags: Vec<String>,
-    date: chrono::DateTime<Utc>,
-    source: String,
+    pub tags: Vec<String>,
+    pub date: chrono::DateTime<Utc>,
+    pub source: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FundraisingEvals {
-    link: String,
-    evals: Vec<Eval>,
+    pub link: String,
+    pub evals: Vec<Eval>,
 }
 
 impl FundraisingEvals {
